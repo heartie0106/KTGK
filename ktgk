@@ -1,0 +1,325 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Runtime.Remoting.Contexts;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using KTGK.Models;
+
+namespace KTGK
+{
+    public partial class frmSinhVien : Form
+    {
+        public frmSinhVien()
+        {
+            InitializeComponent();
+        }
+
+        private void button5_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Kiểm tra xem có trường nào còn trống không
+                if (string.IsNullOrEmpty(txtMSV.Text) || string.IsNullOrEmpty(txtHoTen.Text))
+                {
+                    MessageBox.Show("Vui lòng nhập đầy đủ thông tin sinh viên.");
+                    return;
+                }
+
+                string maSV = txtMSV.Text;
+
+                using (StudentDBContext context = new StudentDBContext())
+                {
+                    // Kiểm tra nếu sinh viên đã tồn tại (cập nhật thông tin)
+                    Sinhvien sv = context.Sinhviens.FirstOrDefault(s => s.MaSV == maSV);
+
+                    if (sv != null)
+                    {
+                        // Cập nhật thông tin sinh viên
+                        sv.HotenSV = txtHoTen.Text;
+                        sv.NgaySinh = dtpNgaySinh.Value;
+                        sv.MaLop = cmbLop.SelectedValue.ToString();
+
+                        context.SaveChanges();
+                        MessageBox.Show("Lưu sinh viên thành công!");
+                    }
+                    else
+                    {
+                        // Thêm mới sinh viên nếu không tồn tại
+                        Sinhvien newSv = new Sinhvien
+                        {
+                            MaSV = txtMSV.Text,
+                            HotenSV = txtHoTen.Text,
+                            NgaySinh = dtpNgaySinh.Value,
+                            MaLop = cmbLop.SelectedValue.ToString(),
+                        };
+
+                        context.Sinhviens.Add(newSv);
+                        context.SaveChanges();
+                        MessageBox.Show("Lưu sinh viên thành công!");
+                    }
+                }
+
+                // Sau khi lưu, reset lại trạng thái và load lại danh sách
+                frmSinhVien_Load(sender, e);
+                btnLuu.Enabled = false;
+                btnKhongLuu.Enabled = false;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi: " + ex.Message);
+            }
+        }
+
+        private void frmSinhVien_Load(object sender, EventArgs e)
+        {
+            try
+            {
+                StudentDBContext context = new StudentDBContext();
+                List<Lop> listLops = context.Lops.ToList(); //lấy các khoa
+                List<Sinhvien> listSinhvien = context.Sinhviens.ToList(); //lấy sinh viên
+               FillFalcultyCombobox(listLops);
+                BindGrid(listSinhvien);
+                btnLuu.Enabled = false;  
+                btnKhongLuu.Enabled = false;  
+
+               
+
+
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+        }
+        private void FillFalcultyCombobox(List<Lop> listLop)
+        {
+            this.cmbLop.DataSource = listLop;
+            this.cmbLop.DisplayMember = "TenLop";
+            this.cmbLop.ValueMember = "MaLop";
+        }
+        private void BindGrid(List<Sinhvien> listSinhvien)
+        {
+            dgvDSSV.Rows.Clear();
+            foreach (var item in listSinhvien)
+            {
+                int index = dgvDSSV.Rows.Add();
+                dgvDSSV.Rows[index].Cells[0].Value = item.MaSV;
+                dgvDSSV.Rows[index].Cells[1].Value = item.HotenSV;
+                dgvDSSV.Rows[index].Cells[2].Value = item.NgaySinh;
+                dgvDSSV.Rows[index].Cells[3].Value = item.Lop;
+            }
+
+        }
+
+        private void btnThem_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Tạo đối tượng sinh viên mới
+                Sinhvien sv = new Sinhvien
+                {
+                    MaSV = txtMSV.Text,
+                    HotenSV = txtHoTen.Text,
+                    NgaySinh = dtpNgaySinh.Value,
+                    MaLop = cmbLop.SelectedValue.ToString(),
+                };
+
+                // Thêm vào cơ sở dữ liệu
+                using (StudentDBContext context = new StudentDBContext())
+                {
+                    context.Sinhviens.Add(sv);
+                    context.SaveChanges();
+                }
+
+                MessageBox.Show("Thêm sinh viên thành công!");
+                frmSinhVien_Load(sender, e); // Load lại danh sách
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi: " + ex.Message);
+            }
+        }
+
+        private void btnXoa_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                if (dgvDSSV.SelectedRows.Count > 0)
+                {
+                    string maSV = dgvDSSV.SelectedRows[0].Cells[0].Value.ToString();
+
+                    using (StudentDBContext context = new StudentDBContext())
+                    {
+                        Sinhvien sv = context.Sinhviens.FirstOrDefault(s => s.MaSV == maSV);
+                        if (sv != null)
+                        {
+                            context.Sinhviens.Remove(sv);
+                            context.SaveChanges();
+                            MessageBox.Show("Xóa sinh viên thành công!");
+                        }
+                        else
+                        {
+                            MessageBox.Show("Không tìm thấy sinh viên!");
+                        }
+                    }
+                    frmSinhVien_Load(sender, e); // Load lại danh sách
+                }
+                else
+                {
+                    MessageBox.Show("Vui lòng chọn một sinh viên để xóa!");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi: " + ex.Message);
+            }
+        }
+
+        private void btnKhongLuu_Click(object sender, EventArgs e)
+        {
+            // Reset lại các ô nhập liệu
+            txtMSV.Text = string.Empty;
+            txtHoTen.Text = string.Empty;
+            dtpNgaySinh.Value = DateTime.Now;
+            cmbLop.SelectedIndex = -1;
+            btnLuu.Enabled = false;
+            btnKhongLuu.Enabled = false;
+        }
+
+        private void btnThoat_Click(object sender, EventArgs e)
+        {
+            var result = MessageBox.Show("Bạn có chắc muốn thoát không?", "Xác nhận", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+            if (result == DialogResult.Yes)
+            {
+                this.Close();
+            }
+        }
+
+        private void btnTim_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                string keyword = txtTimKiem.Text.Trim();
+
+                using (StudentDBContext context = new StudentDBContext())
+                {
+                    var searchResult = context.Sinhviens
+                                               .Where(s => s.HotenSV.Contains(keyword) || s.MaSV.Contains(keyword))
+                                               .ToList();
+                    if (searchResult.Count > 0)
+                    {
+                        BindGrid(searchResult);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Không tìm thấy sinh viên nào!");
+                    }
+                }
+                btnLuu.Enabled = true;
+                btnKhongLuu.Enabled = true;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi: " + ex.Message);
+            }
+        }
+
+        private void txtHoTen_TextChanged(object sender, EventArgs e)
+        {
+            btnLuu.Enabled = true;
+            btnKhongLuu.Enabled = true;
+        }
+
+        private void btnSua_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Kiểm tra xem người dùng đã chọn một sinh viên chưa
+                if (dgvDSSV.SelectedRows.Count > 0)
+                {
+                    // Lấy mã sinh viên từ dòng được chọn trong DataGridView
+                    string maSV = dgvDSSV.SelectedRows[0].Cells[0].Value.ToString();
+
+                    using (StudentDBContext context = new StudentDBContext())
+                    {
+                        // Tìm sinh viên theo mã sinh viên
+                        Sinhvien sv = context.Sinhviens.FirstOrDefault(s => s.MaSV == maSV);
+
+                        if (sv != null)
+                        {
+                            // Điền thông tin sinh viên vào các trường nhập liệu
+                            txtMSV.Text = sv.MaSV;
+                            txtHoTen.Text = sv.HotenSV;
+                            if (sv.NgaySinh.HasValue)
+                            {
+                                dtpNgaySinh.Value = sv.NgaySinh.Value; // Gán giá trị nếu có
+                            }
+                            else
+                            {
+                                dtpNgaySinh.Value = DateTime.Now; // Hoặc giá trị mặc định nào đó
+                            }
+
+                            cmbLop.SelectedValue = sv.MaLop;
+
+                            // Kích hoạt nút Lưu và K.Lưu
+                            btnLuu.Enabled = true;
+                            btnKhongLuu.Enabled = true;
+                        }
+                        else
+                        {
+                            MessageBox.Show("Không tìm thấy sinh viên.");
+                        }
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Vui lòng chọn một sinh viên để sửa.");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi: " + ex.Message);
+            }
+        }
+
+        private void dgvDSSV_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+            try
+            {
+                
+                if (e.RowIndex >= 0)
+                {
+                    DataGridViewRow selectedRow = dgvDSSV.Rows[e.RowIndex];
+
+                   
+                    txtMSV.Text = selectedRow.Cells[0].Value.ToString(); // MaSV
+                    txtHoTen.Text = selectedRow.Cells[1].Value.ToString(); // HoTenSV
+                    dtpNgaySinh.Value = Convert.ToDateTime(selectedRow.Cells[2].Value); // NgaySinh
+
+                    
+                    if (selectedRow.Cells[3].Value != null)
+                    {
+                        cmbLop.SelectedValue = selectedRow.Cells[3].Value.ToString(); // MaLop
+                    }
+
+                   
+                    btnLuu.Enabled = true;
+                    btnKhongLuu.Enabled = true;
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Lỗi: " + ex.Message);
+            }
+        }
+       
+
+
+}
+}
